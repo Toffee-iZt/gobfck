@@ -52,17 +52,14 @@ func (vm *VM) Run() error {
 		vm.err = errors.New("vm: no instructions for exec")
 		return vm.err
 	}
-	return vm.run()
-}
-
-func (vm *VM) run() error {
-	for vm.err == nil {
-		vm.do()
+	for {
+		select {
+		case <-vm.Done():
+			return vm.err
+		default:
+			vm.do()
+		}
 	}
-
-	vm.instStream = nil
-
-	return vm.err
 }
 
 func (vm *VM) do() {
@@ -112,8 +109,19 @@ func (vm *VM) do() {
 		}
 		vm.brc--
 	default:
-		break
+		vm.stop()
+		return
+	}
+
+	if vm.err != nil {
+		vm.stop()
+		return
 	}
 
 	vm.iptr++
+}
+
+func (vm *VM) stop() {
+	close(vm.done)
+	vm.instStream = nil
 }

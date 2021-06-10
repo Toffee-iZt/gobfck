@@ -1,13 +1,11 @@
 package vm
 
-func Compile(code []byte) []Inst {
-	comp := make([]Inst, len(code))
-
+func Compile(code []byte, dst []Inst) []Inst {
 	for i := range code {
-		comp[i] = CompileOne(code[i])
+		dst = append(dst, CompileOne(code[i]))
 	}
 
-	return comp
+	return dst
 }
 
 func CompileOne(b byte) Inst {
