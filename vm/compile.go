@@ -1,13 +1,15 @@
 package vm
 
-func Compile(code []byte, dst []Inst) []Inst {
+// Compile compiles code into vm instructions.
+func Compile(code []byte) []Inst {
+	program := make([]Inst, 0, len(code))
 	for i := range code {
-		dst = append(dst, CompileOne(code[i]))
+		program = append(program, CompileOne(code[i]))
 	}
-
-	return dst
+	return program
 }
 
+// CompileOne converts byte into instruction.
 func CompileOne(b byte) Inst {
 	switch b {
 	case '>':
@@ -27,6 +29,6 @@ func CompileOne(b byte) Inst {
 	case ']':
 		return WEND
 	default:
-		return END
+		return NOP
 	}
 }

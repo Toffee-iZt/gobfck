@@ -5,7 +5,8 @@ type Inst uint8
 
 // instructions set.
 const (
-	NEXT Inst = iota
+	NOP Inst = iota
+	NEXT
 	PREV
 	INC
 	DEC
@@ -13,30 +14,27 @@ const (
 	PULL
 	WHILE
 	WEND
-	END
 )
 
-// InstStream is instructions stream for vm.
-type InstStream interface {
-	Next() Inst
-}
-
-type instArray struct {
-	array []Inst
-	ptr   int
-}
-
-func (b *instArray) Next() Inst {
-	if b.ptr > len(b.array)-1 {
-		return END
+func (i *Inst) String() string {
+	switch *i {
+	case NEXT:
+		return "NEXT"
+	case PREV:
+		return "PREV"
+	case INC:
+		return "INC"
+	case DEC:
+		return "DEC"
+	case PUT:
+		return "PUT"
+	case PULL:
+		return "PULL"
+	case WHILE:
+		return "WHILE"
+	case WEND:
+		return "WEND"
+	default:
+		return "NOP"
 	}
-	i := b.array[b.ptr]
-	b.ptr++
-	return i
-}
-
-// NewInstStream creates new instruction stream
-// from compiled instructions array.
-func NewInstStream(i []Inst) InstStream {
-	return &instArray{array: i}
 }
