@@ -35,7 +35,6 @@ type VM struct {
 	out io.Writer
 
 	jmp []int
-	skp []bool
 
 	i   int
 	cpu [30000]byte
@@ -67,7 +66,7 @@ func (vm *VM) print(c byte) {
 }
 
 func (vm *VM) do() bool {
-	skip := len(vm.skp) > 0 && vm.skp[len(vm.skp)-1]
+	skip := len(vm.jmp) > 0 && vm.jmp[len(vm.jmp)-1] == -1
 	if vm.pc >= len(vm.prog) {
 		if skip {
 			vm.err = ErrInvalidWHILE
@@ -105,8 +104,11 @@ func (vm *VM) do() bool {
 		}
 		vm.cpu[vm.i] = b
 	case WHILE:
-		vm.jmp = append(vm.jmp, vm.pc)
-		vm.skp = append(vm.skp, vm.cpu[vm.i] == 0)
+		jmp := vm.pc
+		if vm.cpu[vm.i] == 0 {
+			jmp = -1
+		}
+		vm.jmp = append(vm.jmp, jmp)
 	case WEND:
 		if len(vm.jmp) == 0 {
 			vm.err = ErrInvalidWEND
@@ -114,7 +116,6 @@ func (vm *VM) do() bool {
 		}
 		if vm.cpu[vm.i] == 0 {
 			vm.jmp = vm.jmp[:len(vm.jmp)-1]
-			vm.skp = vm.skp[:len(vm.skp)-1]
 			break
 		}
 		vm.pc = vm.jmp[len(vm.jmp)-1]
