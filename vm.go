@@ -1,8 +1,7 @@
-package vm
+package gobfck
 
 import (
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -10,9 +9,11 @@ import (
 var (
 	ErrInvalidInst  = errors.New("invalid instruction")
 	ErrInvalidWHILE = errors.New("invalid instruction WHILE: no WEND instruction found")
-	ErrInvalidWEND  = errors.New("unexpected operator WEND: WHILE was not before")
-	ErrInvalidNEXT  = errors.New("invalid instruction NEXT: stack pointer at max offset")
-	ErrInvalidPREV  = errors.New("invalid instruction PREV: stack pointer at zero offset")
+	ErrInvalidWEND  = errors.New("unexpected instruction WEND: WHILE was not before")
+	ErrInvalidNEXT  = errors.New("unexpected instruction NEXT: stack pointer at max offset")
+	ErrInvalidPREV  = errors.New("unexpected instruction PREV: stack pointer at zero offset")
+	ErrInvalidPUT   = errors.New("unexpected instruction PUT: there is no output writer")
+	ErrInvalidPULL  = errors.New("unexpected instruction PULL: there is no input reader")
 )
 
 // New creates new vm instance.
@@ -51,18 +52,25 @@ func (vm *VM) Run() error {
 			break
 		}
 	}
-	println()
+	vm.out.Write([]byte{'\n'})
 	return vm.err
 }
 
 func (vm *VM) getch() (byte, error) {
+	if vm.inp == nil {
+		return 0, ErrInvalidPULL
+	}
 	var c [1]byte
 	_, err := vm.inp.Read(c[:])
 	return c[0], err
 }
 
-func (vm *VM) print(c byte) {
-	fmt.Fprintf(vm.out, "%c", c)
+func (vm *VM) print(c byte) error {
+	if vm.out == nil {
+		return ErrInvalidPUT
+	}
+	_, err := vm.out.Write([]byte{c})
+	return err
 }
 
 func (vm *VM) do() bool {
@@ -80,27 +88,28 @@ func (vm *VM) do() bool {
 	}
 	switch inst {
 	case NEXT:
-		if vm.i < len(vm.cpu)-1 {
-			vm.i++
+		if vm.i >= len(vm.cpu)-1 {
+			vm.err = ErrInvalidNEXT
 			break
 		}
-		vm.err = ErrInvalidNEXT
+		vm.i++
 	case PREV:
-		if vm.i > 0 {
-			vm.i--
+		if vm.i <= 0 {
+			vm.err = ErrInvalidPREV
 			break
 		}
-		vm.err = ErrInvalidPREV
+		vm.i--
 	case INC:
 		vm.cpu[vm.i]++
 	case DEC:
 		vm.cpu[vm.i]--
 	case PUT:
-		vm.print(vm.cpu[vm.i])
+		vm.err = vm.print(vm.cpu[vm.i])
 	case PULL:
 		b, err := vm.getch()
 		if err != nil {
 			vm.err = err
+			break
 		}
 		vm.cpu[vm.i] = b
 	case WHILE:

@@ -1,4 +1,4 @@
-package vm
+package gobfck
 
 // Inst represents brainfuck instruction.
 type Inst uint8

@@ -1,4 +1,4 @@
-package vm
+package gobfck
 
 // Compile compiles code into vm instructions.
 func Compile(code []byte) []Inst {
