@@ -1,6 +1,7 @@
 package gobfck
 
 import (
+	"context"
 	"errors"
 	"io"
 )
@@ -43,12 +44,24 @@ type VM struct {
 
 // Run starts vm.
 func (vm *VM) Run() error {
+	return vm.RunContext(context.Background())
+}
+
+// RunContext starts vm with context.
+func (vm *VM) RunContext(ctx context.Context) error {
 	if vm.prog == nil {
 		vm.err = errors.New("vm: no instructions for exec")
 		return vm.err
 	}
 	for vm.err == nil {
-		if vm.do() {
+		compl := false
+		select {
+		case <-ctx.Done():
+			vm.err = ctx.Err()
+		default:
+			compl = vm.do()
+		}
+		if compl {
 			break
 		}
 	}
