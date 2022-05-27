@@ -8,7 +8,6 @@ import (
 
 // errors.
 var (
-	ErrInvalidInst  = errors.New("invalid instruction")
 	ErrInvalidWHILE = errors.New("invalid instruction WHILE: no WEND instruction found")
 	ErrInvalidWEND  = errors.New("unexpected instruction WEND: WHILE was not before")
 	ErrInvalidNEXT  = errors.New("unexpected instruction NEXT: stack pointer at max offset")
@@ -142,7 +141,6 @@ func (vm *VM) do() bool {
 		}
 		vm.pc = vm.jmp[len(vm.jmp)-1]
 	default:
-		vm.err = ErrInvalidInst
 	}
 
 	vm.pc++
