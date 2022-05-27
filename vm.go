@@ -88,13 +88,13 @@ func (vm *VM) print(c byte) error {
 func (vm *VM) do() bool {
 	skip := len(vm.jmp) > 0 && vm.jmp[len(vm.jmp)-1] == -1
 	if vm.pc >= len(vm.prog) {
-		if skip {
+		if len(vm.jmp) > 0 {
 			vm.err = ErrInvalidWHILE
 		}
 		return true
 	}
 	inst := vm.prog[vm.pc]
-	if skip && inst != WEND {
+	if skip && inst != WEND && inst != WHILE {
 		vm.pc++
 		return false
 	}
