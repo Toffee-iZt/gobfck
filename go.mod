@@ -1,5 +1,5 @@
-module github.com/Toffee-iZt/gobfck
+module github.com/karalef/gobfck
 
 go 1.16
 
-replace github.com/Toffee-iZt => ../
+replace github.com/karalef => ../
