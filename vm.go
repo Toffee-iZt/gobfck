@@ -10,7 +10,7 @@ import (
 // errors.
 var (
 	ErrInvalidWHILE = errors.New("invalid instruction WHILE: no WEND instruction found")
-	ErrInvalidWEND  = errors.New("unexpected instruction WEND: WHILE was not before")
+	ErrInvalidWEND  = errors.New("invalid instruction WEND: WHILE was not before")
 	ErrInvalidNEXT  = errors.New("unexpected instruction NEXT: stack pointer at max offset")
 	ErrInvalidPREV  = errors.New("unexpected instruction PREV: stack pointer at zero offset")
 	ErrInvalidPUT   = errors.New("unexpected instruction PUT: there is no output writer")
@@ -18,29 +18,27 @@ var (
 )
 
 // NewDefault creates new vm instance with default parameters.
-func NewDefault(program []Inst) *VM {
-	return New(os.Stdin, os.Stdout, program)
+func NewDefault(prog Bytecode) *VM {
+	return New(os.Stdin, os.Stdout, prog)
 }
 
 // New creates new vm instance.
-func New(in io.Reader, out io.Writer, program []Inst) *VM {
+func New(in io.Reader, out io.Writer, prog Bytecode) *VM {
 	return &VM{
 		inp:  in,
 		out:  out,
-		prog: program,
+		prog: prog,
 		cpu:  make([]byte, 30000),
 	}
 }
 
 // VM is brainfuck virtual machine.
 type VM struct {
-	prog []Inst
+	prog Bytecode
 	pc   int
 
 	inp io.Reader
 	out io.Writer
-
-	jmp []int
 
 	i   int
 	cpu []byte
@@ -53,7 +51,7 @@ func (vm *VM) Run() error {
 
 // RunContext starts vm with context.
 func (vm *VM) RunContext(ctx context.Context) (err error) {
-	if vm.pc != 0 || vm.jmp != nil {
+	if vm.pc != 0 || vm.i != 0 {
 		return errors.New("vm already holds state")
 	}
 	for exit := false; !exit && err == nil; {
@@ -86,19 +84,11 @@ func (vm *VM) print(c byte) error {
 }
 
 func (vm *VM) do() (exit bool, err error) {
-	skip := len(vm.jmp) > 0 && vm.jmp[len(vm.jmp)-1] == -1
 	if exit = vm.pc >= len(vm.prog); exit {
-		if len(vm.jmp) > 0 {
-			err = ErrInvalidWHILE
-		}
 		return
 	}
-	inst := vm.prog[vm.pc]
-	if skip && inst != WEND && inst != WHILE {
-		vm.pc++
-		return false, nil
-	}
-	switch inst {
+	opcode, operand := vm.prog.Read(vm.pc)
+	switch opcode {
 	case NEXT:
 		if vm.i >= len(vm.cpu)-1 {
 			err = ErrInvalidNEXT
@@ -125,24 +115,17 @@ func (vm *VM) do() (exit bool, err error) {
 		}
 		vm.cpu[vm.i] = b
 	case WHILE:
-		jmp := vm.pc
 		if vm.cpu[vm.i] == 0 {
-			jmp = -1
+			vm.pc = int(operand)
 		}
-		vm.jmp = append(vm.jmp, jmp)
 	case WEND:
-		if len(vm.jmp) == 0 {
-			err = ErrInvalidWEND
-			break
+		if vm.cpu[vm.i] != 0 {
+			vm.pc = int(operand)
 		}
-		if vm.cpu[vm.i] == 0 {
-			vm.jmp = vm.jmp[:len(vm.jmp)-1]
-			break
-		}
-		vm.pc = vm.jmp[len(vm.jmp)-1]
 	default:
 	}
 
-	vm.pc++
+	vm.pc = vm.prog.Next(vm.pc)
+
 	return
 }
