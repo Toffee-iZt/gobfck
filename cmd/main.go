@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/Toffee-iZt/gobfck"
+	"github.com/karalef/gobfck"
 )
 
 const hw = "++++++++++[>+++++++>++++++++++>+++<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+."
