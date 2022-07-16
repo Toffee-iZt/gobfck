@@ -12,18 +12,18 @@ func main() {
 	if len(os.Args) < 2 {
 		println("file path is not specified")
 		println("starting 'Hello World'\n")
-		run([]byte(hw))
+		run(gobfck.Compile([]byte(hw)))
 	}
 
-	data, err := os.ReadFile(os.Args[1])
+	prog, err := gobfck.CompileFile(os.Args[1])
 	if err != nil {
-		println(err.Error())
+		panic(err)
 	}
-	run(data)
+	run(prog)
 }
 
-func run(data []byte) {
-	v := gobfck.New(os.Stdin, os.Stdout, gobfck.Compile(data))
+func run(prog []gobfck.Inst) {
+	v := gobfck.NewDefault(prog)
 	err := v.Run()
 	if err != nil {
 		println(err.Error())

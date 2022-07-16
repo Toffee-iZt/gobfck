@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 )
 
 // errors.
@@ -16,19 +17,23 @@ var (
 	ErrInvalidPULL  = errors.New("unexpected instruction PULL: there is no input reader")
 )
 
+// NewDefault creates new vm instance with default parameters.
+func NewDefault(program []Inst) *VM {
+	return New(os.Stdin, os.Stdout, program)
+}
+
 // New creates new vm instance.
 func New(in io.Reader, out io.Writer, program []Inst) *VM {
 	return &VM{
 		inp:  in,
 		out:  out,
 		prog: program,
+		cpu:  make([]byte, 30000),
 	}
 }
 
 // VM is brainfuck virtual machine.
 type VM struct {
-	err error
-
 	prog []Inst
 	pc   int
 
@@ -38,7 +43,7 @@ type VM struct {
 	jmp []int
 
 	i   int
-	cpu [30000]byte
+	cpu []byte
 }
 
 // Run starts vm.
@@ -47,25 +52,20 @@ func (vm *VM) Run() error {
 }
 
 // RunContext starts vm with context.
-func (vm *VM) RunContext(ctx context.Context) error {
-	if vm.prog == nil {
-		vm.err = errors.New("vm: no instructions for exec")
-		return vm.err
+func (vm *VM) RunContext(ctx context.Context) (err error) {
+	if vm.pc != 0 || vm.jmp != nil {
+		return errors.New("vm already holds state")
 	}
-	for vm.err == nil {
-		compl := false
+	for exit := false; !exit && err == nil; {
 		select {
 		case <-ctx.Done():
-			vm.err = ctx.Err()
+			err = ctx.Err()
 		default:
-			compl = vm.do()
-		}
-		if compl {
-			break
+			exit, err = vm.do()
 		}
 	}
-	vm.out.Write([]byte{'\n'})
-	return vm.err
+	vm.print('\n')
+	return
 }
 
 func (vm *VM) getch() (byte, error) {
@@ -85,29 +85,29 @@ func (vm *VM) print(c byte) error {
 	return err
 }
 
-func (vm *VM) do() bool {
+func (vm *VM) do() (exit bool, err error) {
 	skip := len(vm.jmp) > 0 && vm.jmp[len(vm.jmp)-1] == -1
-	if vm.pc >= len(vm.prog) {
+	if exit = vm.pc >= len(vm.prog); exit {
 		if len(vm.jmp) > 0 {
-			vm.err = ErrInvalidWHILE
+			err = ErrInvalidWHILE
 		}
-		return true
+		return
 	}
 	inst := vm.prog[vm.pc]
 	if skip && inst != WEND && inst != WHILE {
 		vm.pc++
-		return false
+		return false, nil
 	}
 	switch inst {
 	case NEXT:
 		if vm.i >= len(vm.cpu)-1 {
-			vm.err = ErrInvalidNEXT
+			err = ErrInvalidNEXT
 			break
 		}
 		vm.i++
 	case PREV:
 		if vm.i <= 0 {
-			vm.err = ErrInvalidPREV
+			err = ErrInvalidPREV
 			break
 		}
 		vm.i--
@@ -116,11 +116,11 @@ func (vm *VM) do() bool {
 	case DEC:
 		vm.cpu[vm.i]--
 	case PUT:
-		vm.err = vm.print(vm.cpu[vm.i])
+		err = vm.print(vm.cpu[vm.i])
 	case PULL:
-		b, err := vm.getch()
-		if err != nil {
-			vm.err = err
+		b, e := vm.getch()
+		if e != nil {
+			err = e
 			break
 		}
 		vm.cpu[vm.i] = b
@@ -132,7 +132,7 @@ func (vm *VM) do() bool {
 		vm.jmp = append(vm.jmp, jmp)
 	case WEND:
 		if len(vm.jmp) == 0 {
-			vm.err = ErrInvalidWEND
+			err = ErrInvalidWEND
 			break
 		}
 		if vm.cpu[vm.i] == 0 {
@@ -144,5 +144,5 @@ func (vm *VM) do() bool {
 	}
 
 	vm.pc++
-	return false
+	return
 }
